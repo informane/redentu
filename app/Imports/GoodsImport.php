@@ -62,10 +62,7 @@ class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEv
         /*if (!empty($row[2+$offset])){
             $category=Categories::firstOrCreate(['rubric'=>$rubric, 'name'=>$row[2+$offset]]);
         }*/
-        /*
-DELETE FROM `goods` WHERE 1;
-delete FROM `categories` WHERE 1
-        */
+
 
         if (!in_array($row[5+$offset], $this->skus) && !in_array($row[4+$offset], $this->goods) && !empty($row[4+$offset]) && $row[4+$offset] != 'Наименование товара'){
             $this->addedNumber++;
