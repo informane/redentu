@@ -5,7 +5,7 @@ namespace App\Imports;
 use App\Events\ImportMsg;
 use App\Models\Categories;
 use App\Models\Goods;
-use Illuminate\Database\Eloquent\Collection;
+
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -13,8 +13,8 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterImport;
 
-class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEvents
-{
+class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEvents, WithStartRow{
+
 
     private $addedNumber;
     private $skippedNumber;
@@ -53,7 +53,7 @@ class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEv
         $row[2+$offset]=trim($row[2+$offset]);
         $row[4+$offset]=trim($row[4+$offset]);
         $row[5+$offset]=trim($row[5+$offset]);
-        if(!in_array($row[2+$offset],$this->categoryNames)){
+        if (!in_array($row[2+$offset], $this->categoryNames)){
             $this->categoryNames[]=$row[2+$offset];
             $this->categories[]=[
                 'rubric'=>$rubric, 'name'=>$row[2+$offset]
@@ -63,10 +63,9 @@ class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEv
             $category=Categories::firstOrCreate(['rubric'=>$rubric, 'name'=>$row[2+$offset]]);
         }*/
 
-
-        if (!in_array($row[5+$offset], $this->skus) && !in_array($row[4+$offset], $this->goods) && !empty($row[4+$offset]) && $row[4+$offset] != 'Наименование товара'){
+        if (!in_array($row[5+$offset], $this->skus) && !in_array($row[4+$offset], $this->goods) && !empty($row[4+$offset])){
             $this->addedNumber++;
-            if($this->addedNumber%50==0){
+            if ($this->addedNumber%50 == 0){
                 ImportMsg::dispatch($this->addedNumber, $this->skippedNumber);
             }
 
@@ -85,30 +84,29 @@ class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEv
             $this->skus[]=$row[5+$offset];
             return $good;
         } else {
-            if ($row[4+$offset] != 'Наименование товара'){
-                $this->skippedNumber++;
-                if($this->skippedNumber%100==0){
-                    ImportMsg::dispatch($this->addedNumber, $this->skippedNumber);
-                }
+            $this->skippedNumber++;
+            if ($this->skippedNumber%100 == 0){
+                ImportMsg::dispatch($this->addedNumber, $this->skippedNumber);
             }
+
             return null;
         }
     }
 
-     public function registerEvents(): array
-     {
+    public function registerEvents()
+    : array{
 
-         return [
-             AfterImport::class => function(AfterImport $event) {
-                 Categories::insert($this->categories);
+        return [
+            AfterImport::class=>function(AfterImport $event){
+                Categories::insert($this->categories);
 
-                 DB::table('goods')->update(['cat_id'=>DB::raw('(select id from categories where name=goods.cat_name)')]);
-                 echo "Import Successfull!\nTotal imported: {$this->addedNumber}\ntotal skipped: {$this->skippedNumber}";
-             },
+                DB::table('goods')->update(['cat_id'=>DB::raw('(select id from categories where name=goods.cat_name)')]);
+                echo "Import Successful!\nTotal imported: {$this->addedNumber}\ntotal skipped: {$this->skippedNumber}";
+            },
 
-         ];
+        ];
 
-     }
+    }
 
     public function batchSize()
     : int{
@@ -117,6 +115,13 @@ class GoodsImport implements ToModel, WithBatchInserts, WithChunkReading, WithEv
 
     public function chunkSize()
     : int{
-        return 1000;
+        return 6000;
+
     }
+
+    public function startRow()
+    : int{
+        return 2;
+    }
+
 }
